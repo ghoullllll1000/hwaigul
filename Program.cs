@@ -19,13 +19,14 @@ namespace hwmarch
             var movedJournal = new Journal<MovedEvent>();
             var failedJournal = new Journal<FailedAttemptEvent>();
 
-            LoadJournals(placedJournal, takenJournal, movedJournal, failedJournal);
-            RestoreState(shelfA, shelfB, placedJournal, movedJournal);
+            LoadAllJournals(placedJournal, takenJournal, movedJournal, failedJournal);
+
+            RestoreState(shelfA, shelfB, placedJournal, takenJournal, movedJournal);
 
             bool running = true;
             while (running)
             {
-                Console.WriteLine("=== Склад ===");
+                Console.WriteLine("\nСклад");
                 shelfA.PrintState("Полка A");
                 shelfB.PrintState("Полка B");
                 Console.WriteLine("1 - Положить товар");
@@ -44,87 +45,131 @@ namespace hwmarch
                 switch (choice)
                 {
                     case 1:
-                        PlaceItem(shelfA, shelfB, placedJournal, failedJournal);
-                        break;
+                        {
+                            PlaceItem(shelfA, shelfB, placedJournal, failedJournal);
+                            break;
+                        }
                     case 2:
-                        TakeItem(shelfA, shelfB, takenJournal, failedJournal);
-                        break;
+                        {
+                            TakeItem(shelfA, shelfB, takenJournal, failedJournal);
+                            break;
+                        }
                     case 3:
-                        MoveItem(shelfA, shelfB, movedJournal, failedJournal);
-                        break;
+                        {
+                            MoveItem(shelfA, shelfB, movedJournal, failedJournal);
+                            break;
+                        }
                     case 4:
-                        ShowJournals(placedJournal, takenJournal, movedJournal, failedJournal);
-                        break;
+                        {
+                            ShowJournals(placedJournal, takenJournal, movedJournal, failedJournal);
+                            break;
+                        }
                     case 5:
-                        running = false;
-                        break;
+                        {
+                            running = false;
+                            break;
+                        }
                     default:
-                        Console.WriteLine("Неверный пункт меню. Повторите ввод.");
-                        break;
+                        {
+                            Console.WriteLine("Неверный пункт меню. Повторите ввод.");
+                            break;
+                        }
                 }
             }
 
             SaveJournals(placedJournal, takenJournal, movedJournal, failedJournal);
         }
 
-        static void LoadJournals(Journal<PlacedEvent> placedJournal, Journal<TakenEvent> takenJournal, Journal<MovedEvent> movedJournal, Journal<FailedAttemptEvent> failedJournal)
+        static void LoadAllJournals(
+            Journal<PlacedEvent> placed,
+            Journal<TakenEvent> taken,
+            Journal<MovedEvent> moved,
+            Journal<FailedAttemptEvent> failed)
         {
-            LoadJournal("placed.log", placedJournal, PlacedEvent.FromLogLine);
-            LoadJournal("taken.log", takenJournal, TakenEvent.FromLogLine);
-            LoadJournal("moved.log", movedJournal, MovedEvent.FromLogLine);
-            LoadJournal("failed.log", failedJournal, FailedAttemptEvent.FromLogLine);
-        }
-        static void LoadJournal<T>(string path, Journal<T> journal, Func<string, T> fromLogLine) where T : IJournalEntry
-        {
-            if (!File.Exists(path))
-                return;
-
-            var lines = File.ReadAllLines(path);
-            foreach (var line in lines)
+            if (File.Exists("placed.log"))
             {
-                journal.Add(fromLogLine(line));
+                foreach (var line in File.ReadAllLines("placed.log"))
+                    placed.Add(PlacedEvent.FromLogLine(line));
+            }
+
+            if (File.Exists("taken.log"))
+            {
+                foreach (var line in File.ReadAllLines("taken.log"))
+                    taken.Add(TakenEvent.FromLogLine(line));
+            }
+
+            if (File.Exists("moved.log"))
+            {
+                foreach (var line in File.ReadAllLines("moved.log"))
+                    moved.Add(MovedEvent.FromLogLine(line));
+            }
+
+            if (File.Exists("failed.log"))
+            {
+                foreach (var line in File.ReadAllLines("failed.log"))
+                    failed.Add(FailedAttemptEvent.FromLogLine(line));
             }
         }
+
         static void RestoreState(
-        Shelf shelfA, Shelf shelfB,
-        Journal<PlacedEvent> placedJournal,
-        Journal<MovedEvent> movedJournal)
+            Shelf shelfA, Shelf shelfB,
+            Journal<PlacedEvent> placedJournal,
+            Journal<TakenEvent> takenJournal,
+            Journal<MovedEvent> movedJournal)
         {
             foreach (var entry in placedJournal.GetAll())
             {
-                var shelf = entry.Shelf == "A" ? shelfA : shelfB;
+                Shelf shelf = entry.Shelf == "A" ? shelfA : shelfB;
                 shelf.PlaceItem(entry.Slot, entry.Item);
+            }
+
+            foreach (var entry in takenJournal.GetAll())
+            {
+                Shelf shelf = entry.Shelf == "A" ? shelfA : shelfB;
+                shelf.TakeItem(entry.Slot, out _);
             }
 
             foreach (var entry in movedJournal.GetAll())
             {
-                var fromShelf = entry.FromShelf == "A" ? shelfA : shelfB;
-                var toShelf = entry.ToShelf == "A" ? shelfA : shelfB;
+                Shelf fromShelf = entry.FromShelf == "A" ? shelfA : shelfB;
+                Shelf toShelf = entry.ToShelf == "A" ? shelfA : shelfB;
                 fromShelf.MoveItem(entry.FromSlot, toShelf, entry.ToSlot, out _);
             }
         }
+
         static void SaveJournals(
-        Journal<PlacedEvent> placedJournal,
-        Journal<TakenEvent> takenJournal,
-        Journal<MovedEvent> movedJournal,
-        Journal<FailedAttemptEvent> failedJournal)
+            Journal<PlacedEvent> placedJournal,
+            Journal<TakenEvent> takenJournal,
+            Journal<MovedEvent> movedJournal,
+            Journal<FailedAttemptEvent> failedJournal)
         {
             placedJournal.SaveToFile("placed.log");
             takenJournal.SaveToFile("taken.log");
             movedJournal.SaveToFile("moved.log");
             failedJournal.SaveToFile("failed.log");
-            Console.WriteLine("Сохранение журналов в placed.log, taken.log, moved.log, failed.log…");
+            Console.WriteLine("Сохранение выполнено.");
         }
+
         static void PlaceItem(Shelf shelfA, Shelf shelfB, Journal<PlacedEvent> placedJournal, Journal<FailedAttemptEvent> failedJournal)
         {
             Console.Write("Полка (A или B): ");
             string shelfName = Console.ReadLine().ToUpper();
-            Console.Write("Номер слота (1-5): ");
-            if (!int.TryParse(Console.ReadLine(), out int slot))
+
+            if (shelfName != "A" && shelfName != "B")
             {
-                Console.WriteLine("Неверный номер слота.");
+                Console.WriteLine("Неверное имя полки.");
+                failedJournal.Add(new FailedAttemptEvent("Положить", $"Полка {shelfName}", null, "неверное имя полки"));
                 return;
             }
+
+            Console.Write("Номер слота (1-5): ");
+            if (!int.TryParse(Console.ReadLine(), out int slot) || slot < 1 || slot > 5)
+            {
+                Console.WriteLine("Неверный номер слота.");
+                failedJournal.Add(new FailedAttemptEvent("Положить", $"Полка {shelfName}", null, "неверный номер слота"));
+                return;
+            }
+
             Console.Write("Название товара: ");
             string item = Console.ReadLine();
 
@@ -136,19 +181,29 @@ namespace hwmarch
             }
             else
             {
-                string reason = string.IsNullOrEmpty(shelf.GetItem(slot)) ? "слот пуст" : "слот занят";
-                failedJournal.Add(new FailedAttemptEvent("Положить", shelfName, slot, reason));
+                string reason = "слот занят";
+                failedJournal.Add(new FailedAttemptEvent("Положить", $"полка {shelfName}", slot, reason));
                 Console.WriteLine($"Нельзя положить: {reason}.");
             }
         }
+
         static void TakeItem(Shelf shelfA, Shelf shelfB, Journal<TakenEvent> takenJournal, Journal<FailedAttemptEvent> failedJournal)
         {
             Console.Write("Полка (A или B): ");
             string shelfName = Console.ReadLine().ToUpper();
+
+            if (shelfName != "A" && shelfName != "B")
+            {
+                Console.WriteLine("Неверное имя полки.");
+                failedJournal.Add(new FailedAttemptEvent("Забрать", $"Полка {shelfName}", null, "неверное имя полки"));
+                return;
+            }
+
             Console.Write("Номер слота (1-5): ");
-            if (!int.TryParse(Console.ReadLine(), out int slot))
+            if (!int.TryParse(Console.ReadLine(), out int slot) || slot < 1 || slot > 5)
             {
                 Console.WriteLine("Неверный номер слота.");
+                failedJournal.Add(new FailedAttemptEvent("Забрать", $"Полка {shelfName}", null, "неверный номер слота"));
                 return;
             }
 
@@ -160,28 +215,42 @@ namespace hwmarch
             }
             else
             {
-                string reason = string.IsNullOrEmpty(shelf.GetItem(slot)) ? "слот пуст" : "неизвестная ошибка";
-                failedJournal.Add(new FailedAttemptEvent("Забрать", shelfName, slot, reason));
+                string reason = "слот пуст";
+                failedJournal.Add(new FailedAttemptEvent("Забрать", $"полка {shelfName}", slot, reason));
                 Console.WriteLine($"Нельзя забрать: {reason}.");
             }
         }
+
         static void MoveItem(Shelf shelfA, Shelf shelfB, Journal<MovedEvent> movedJournal, Journal<FailedAttemptEvent> failedJournal)
         {
             Console.Write("Полка-источник (A или B): ");
             string fromShelfName = Console.ReadLine().ToUpper();
-            Console.Write("Слот-источник (1-5): ");
-            if (!int.TryParse(Console.ReadLine(), out int fromSlot))
-            {
-                Console.WriteLine("Неверный номер слота.");
+            if (fromShelfName != "A" && fromShelfName != "B") 
+            { 
+                Console.WriteLine("Неверная полка.");
                 return;
             }
+
+            Console.Write("Слот-источник (1-5): ");
+            if (!int.TryParse(Console.ReadLine(), out int fromSlot) || fromSlot < 1 || fromSlot > 5) 
+            { 
+                Console.WriteLine("Неверный слот."); 
+                return; 
+            }
+
             Console.Write("Полка-назначение (A или B): ");
             string toShelfName = Console.ReadLine().ToUpper();
+            if (toShelfName != "A" && toShelfName != "B") 
+            { 
+                Console.WriteLine("Неверная полка."); 
+                return; 
+            }
+
             Console.Write("Слот-назначение (1-5): ");
-            if (!int.TryParse(Console.ReadLine(), out int toSlot))
-            {
-                Console.WriteLine("Неверный номер слота.");
-                return;
+            if (!int.TryParse(Console.ReadLine(), out int toSlot) || toSlot < 1 || toSlot > 5) 
+            { 
+                Console.WriteLine("Неверный слот."); 
+                return; 
             }
 
             Shelf fromShelf = fromShelfName == "A" ? shelfA : shelfB;
@@ -195,27 +264,40 @@ namespace hwmarch
             else
             {
                 string reason = string.IsNullOrEmpty(fromShelf.GetItem(fromSlot)) ? "слот пуст" : "слот назначения занят";
-                failedJournal.Add(new FailedAttemptEvent("Перенести", $"{fromShelfName}:{fromSlot} на {toShelfName}:{toSlot}", null, reason));
+                failedJournal.Add(new FailedAttemptEvent("Перенести", $"с {fromShelfName}:{fromSlot} на {toShelfName}:{toSlot}", null, reason));
                 Console.WriteLine($"Нельзя перенести: {reason}.");
             }
         }
-        static void ShowJournals(Journal<PlacedEvent> placedJournal,Journal<TakenEvent> takenJournal, Journal<MovedEvent> movedJournal,Journal<FailedAttemptEvent> failedJournal)
+
+        static void ShowJournals(
+            Journal<PlacedEvent> placedJournal,
+            Journal<TakenEvent> takenJournal,
+            Journal<MovedEvent> movedJournal,
+            Journal<FailedAttemptEvent> failedJournal)
         {
-            Console.WriteLine("--- Размещения ---");
+            Console.WriteLine("\nРазмещения");
             foreach (var entry in placedJournal.GetAll())
+            {
                 Console.WriteLine(entry.ToScreenLine());
+            }
 
-            Console.WriteLine("--- Изъятия ---");
+            Console.WriteLine("\nИзъятия");
             foreach (var entry in takenJournal.GetAll())
+            {
                 Console.WriteLine(entry.ToScreenLine());
+            }
 
-            Console.WriteLine("--- Переносы ---");
+            Console.WriteLine("\nПереносы");
             foreach (var entry in movedJournal.GetAll())
+            {
                 Console.WriteLine(entry.ToScreenLine());
+            }
 
-            Console.WriteLine("--- Неуспешные попытки ---");
+            Console.WriteLine("\nНеуспешные попытки");
             foreach (var entry in failedJournal.GetAll())
+            { 
                 Console.WriteLine(entry.ToScreenLine());
+            }
         }
     }
 }

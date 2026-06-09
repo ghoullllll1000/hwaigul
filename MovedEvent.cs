@@ -10,49 +10,28 @@ namespace hwmarch
         private int toSlot;
         private string item;
 
-        public string FromShelf
-        {
-            get { return fromShelf; }
-        }
-        public int FromSlot
-        {
-            get { return fromSlot; }
-        }
-        public string ToShelf
-        {
-            get { return toShelf; }
-        }
-        public int ToSlot
-        {
-            get { return toSlot; }
-        }
-        public string Item
-        {
-            get { return item; }
-        }
+        public string FromShelf { get; }
+        public int FromSlot { get; }
+        public string ToShelf { get; }
+        public int ToSlot { get; }
+        public string Item { get; }
 
         public MovedEvent(string fromShelf, int fromSlot, string toShelf, int toSlot, string item)
         {
-            this.fromShelf = fromShelf;
-            this.fromSlot = fromSlot;
-            this.toShelf = toShelf;
-            this.toSlot = toSlot;
-            this.item = item;
+            FromShelf = fromShelf;
+            FromSlot = fromSlot;
+            ToShelf = toShelf;
+            ToSlot = toSlot;
+            Item = item;
         }
 
-        public string ToLogLine()
-        {
-            return $"{fromShelf}|{fromSlot}|{toShelf}|{toSlot}|{item}";
-        }
-        public string ToScreenLine()
-        {
-            return $"Перенос | с {fromShelf}:{fromSlot} на {toShelf}:{toSlot} | товар {item}";
-        }
+        public string ToLogLine() => $"{FromShelf}|{FromSlot}|{ToShelf}|{ToSlot}|{Item}";
+        public string ToScreenLine() => $"Перенос | с {FromShelf}:{FromSlot} на {ToShelf}:{ToSlot} | товар «{Item}»";
 
         public static MovedEvent FromLogLine(string line)
         {
             var parts = line.Split('|');
-            return new MovedEvent(parts[1], int.Parse(parts[2]), parts[3], int.Parse(parts[4]), parts[5]);
+            return new MovedEvent(parts[0], int.Parse(parts[1]), parts[2], int.Parse(parts[3]), parts[4]);
         }
     }
 }

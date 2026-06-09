@@ -9,45 +9,31 @@ namespace hwmarch
         private int? slot;
         private string reason;
 
-        public string Operation
+        public string Operation { get; }
+        public string ShelfInfo { get; }
+        public int? Slot { get; }
+        public string Reason { get; }
+
+        public FailedAttemptEvent(string operation, string shelfInfo, int? slot, string reason)
         {
-            get { return operation; }
-        }
-        public string Shelf
-        {
-            get { return shelf; }
-        }
-        public int? Slot
-        {
-            get { return slot; }
-        }
-        public string Reason
-        {
-            get { return reason; }
+            Operation = operation;
+            ShelfInfo = shelfInfo;
+            Slot = slot;
+            Reason = reason;
         }
 
-        public FailedAttemptEvent(string operation, string shelf, int? slot, string reason)
-        {
-            this.operation = operation;
-            this.shelf = shelf;
-            this.slot = slot;
-            this.reason = reason;
-        }
-
-        public string ToLogLine()
-        {
-            return $"{operation}|{shelf}|{slot?.ToString()}|{reason}";
-        }
+        public string ToLogLine() => $"{Operation}|{ShelfInfo}|{Slot}|{Reason}";
         public string ToScreenLine()
         {
-            return $"Неудача | {operation} | полка {shelf} | слот {slot} | причина - {reason}";
+            string slotStr = Slot.HasValue ? $" слот {Slot}" : "";
+            return $"Неудача | {Operation} | {ShelfInfo}{slotStr} | причина: {Reason}";
         }
 
         public static FailedAttemptEvent FromLogLine(string line)
         {
             var parts = line.Split('|');
-            int? slot = string.IsNullOrEmpty(parts[3]) ? 0 : int.Parse(parts[3]);
-            return new FailedAttemptEvent(parts[1], parts[2], slot, parts[4]);
+            int? slot = string.IsNullOrEmpty(parts[2]) ? null : (int?)int.Parse(parts[2]);
+            return new FailedAttemptEvent(parts[0], parts[1], slot, parts[3]);
         }
     }
 }

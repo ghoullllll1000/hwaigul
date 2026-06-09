@@ -4,19 +4,20 @@ namespace hwmarch
 {
     internal class Shelf
     {
-        private const int SlotCnt = 5;
-        private string[] slots = new string[SlotCnt];
+        private const int S = 5;
+        private readonly string[] slots = new string[S];
+
+        public string GetItem(int slot)
+        {
+            if (slot < 1 || slot > S) return null;
+            return slots[slot - 1];
+        }
 
         public bool PlaceItem(int slot, string item)
         {
-            if (slot < 1 || slot > SlotCnt)
-            {
+            if (slot < 1 || slot > S || !string.IsNullOrEmpty(slots[slot - 1]))
                 return false;
-            }
-            if (string.IsNullOrEmpty(slots[slot - 1]))
-            {
-                return false;
-            }
+
             slots[slot - 1] = item;
             return true;
         }
@@ -24,14 +25,9 @@ namespace hwmarch
         public bool TakeItem(int slot, out string item)
         {
             item = null;
-            if (slot < 1 || slot > SlotCnt)
-            { 
+            if (slot < 1 || slot > S || string.IsNullOrEmpty(slots[slot - 1]))
                 return false;
-            }
-            if (string.IsNullOrEmpty(slots[slot - 1]))
-            {
-                return false;
-            }
+
             item = slots[slot - 1];
             slots[slot - 1] = null;
             return true;
@@ -40,33 +36,23 @@ namespace hwmarch
         public bool MoveItem(int fromSlot, Shelf toShelf, int toSlot, out string item)
         {
             item = null;
-            if (!TakeItem(fromSlot, out item))
-            {
+            if (string.IsNullOrEmpty(GetItem(fromSlot)) || !string.IsNullOrEmpty(toShelf.GetItem(toSlot)))
                 return false;
-            }
-            if (!toShelf.PlaceItem(toSlot, item))
-            {
-                PlaceItem(fromSlot, item);
-                return false;
-            }
+
+            TakeItem(fromSlot, out item);
+            toShelf.PlaceItem(toSlot, item);
             return true;
         }
-        public string GetItem(int slot)
-        {
-            if (slot < 1 || slot > SlotCnt)
-            {
-                return null;
-            }
-            return slots[slot - 1];
-        }
 
-        public void PrintState(string shelfName)
+        public void PrintState(string label)
         {
-            Console.WriteLine($"{shelfName}:");
-            for (int i = 0; i < SlotCnt; i++)
+            Console.Write($"{label}: ");
+            for (int i = 0; i < S; i++)
             {
-                Console.WriteLine($"[{i + 1}] {(string.IsNullOrEmpty(slots[i]) ? "пусто" : slots[i])}");
+                string status = string.IsNullOrEmpty(slots[i]) ? "пусто" : slots[i];
+                Console.Write($"{i + 1} {status}   ");
             }
+            Console.WriteLine();
         }
     }
 }
